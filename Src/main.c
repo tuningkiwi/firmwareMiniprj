@@ -82,7 +82,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	uint16_t curPin = GPIO_PIN_0;
+	uint16_t nextPin = GPIO_PIN_1;
+	
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -118,6 +120,23 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		{//1: LED SHIFT 
+				HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_SET);
+				HAL_Delay(1000);
+				HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_RESET);				
+				curPin <<= 1;
+				nextPin <<= 1;
+		
+				if(curPin == GPIO_PIN_5){
+					HAL_GPIO_WritePin(GPIOC,GPIO_PIN_4,GPIO_PIN_RESET);
+					curPin = GPIO_PIN_0;
+					nextPin =GPIO_PIN_1;
+				}		
+		}
+		
+		
+		
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
