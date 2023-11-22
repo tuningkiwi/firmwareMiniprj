@@ -37,7 +37,18 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define TEMP 0
+#define HUMI 1
 
+/*********SHT2(Temp,Humid sensor)command set**************/
+#define SHT2x_ADDR 	(0x40<<1)
+#define SHT2x_HOLD_MASTER_T		0xE3
+#define SHT2x_HOLD_MASTER_RH	0xE5
+#define SHT2x_NOHOLD_MASTER_T 0xF3
+#define SHT2x_NOHOLD_MASTER_RH	0xF5
+#define SHT2x_WRITE_USER_REG		0xE6
+#define SHT2x_READ_USER_REG			0xE7
+#define SHT2x_SOFT_RESET		0xFE
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -79,6 +90,42 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
 }
 
+float SHT20(int select){//NO HOLD MASTER MODE 
+	uint8_t I2CData[3];
+	uint16_t SLAVER_ADDR = SHT2x_ADDR;
+	float convData = 0.0;
+	if(select == TEMP){
+		I2CData[0] =SHT2x_NOHOLD_MASTER_T;
+		//printf("i am here\n\r");
+		//온도를 측정해라 명령을 송신한다
+		
+		if(HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff)==HAL_OK){
+				printf("Send Command SUCCESS!!\n\r");
+				
+		}else {
+				printf("Send Command FAILED!!\n\r");
+		}
+		HAL_Delay(100);
+		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
+		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
+		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
+		convData = -46.85+(175.72/65536*(float)sensor);
+		
+	}else if(select == HUMI){
+		I2CData[0] =SHT2x_NOHOLD_MASTER_RH;
+		
+		HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff);
+		HAL_Delay(100);
+		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
+		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
+		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
+		convData = -6+(125.0/65536*(float)sensor);
+		//convData = -6+125*((float)sensor/65536);
+		
+	}
+
+	return convData;
+}
 /* USER CODE END 0 */
 
 /**
@@ -96,8 +143,10 @@ int main(void)
 	//3번 피아노 pwm
 	uint32_t pwmF;
 	uint16_t scale[]={523,587,659,698,783,880,987,1046};//음계 
-	//4번 
+	//4번 STREET LAMP 
 	uint16_t adcData[2];
+	//5번 Temp/Humid 
+	float temperature, humidity;
 	
   /* USER CODE END 1 */
 
@@ -181,17 +230,25 @@ int main(void)
 		{//4: STREET LAMP ADC(PA1),GPIO_LED (PC5)/ DMA 
 			//printf("ADC:%d\n\r",adcData[0]);
 			//HAL_Delay(1000);
-			while(adcData[0]<3000){ //dark so lamp on	
+			if(adcData[0]<3000){ //dark so lamp on	
 				printf("ADC:%d\n\r",adcData[0]);				
 				HAL_GPIO_WritePin(GPIOC,GPIO_PIN_5,GPIO_PIN_SET);
 				HAL_Delay(1000);
 			}	
-			while(adcData[0] >3000){//light so lamp off
+			if(adcData[0] >3000){//light so lamp off
 				printf("ADC:%d\n\r",adcData[0]);		
 				HAL_GPIO_WritePin(GPIOC,GPIO_PIN_5,GPIO_PIN_RESET);
 				HAL_Delay(1000);
 
 			}		
+		}
+		
+		{//5: TEMP/HUMID  PB6(I2C1_SCL)PB9(I2C1_SDA)   
+			temperature = SHT20(TEMP);
+			humidity = SHT20(HUMI);
+			HAL_Delay(500);
+			printf("TEMP: %.2lf HUMI: %.2lf \r\n",temperature, humidity);
+		
 		}
 		
 		
