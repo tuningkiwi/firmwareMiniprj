@@ -51,6 +51,8 @@
 FILE __stdout;
 uint8_t pData;
 int piano = EOF;
+
+//uint16_t adcData[2];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -86,11 +88,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	//1번 shift led 
 	uint16_t curPin = GPIO_PIN_0;
 	uint16_t nextPin = GPIO_PIN_1;
+	//2번 mood light
 	uint16_t CCRVal = 0;
+	//3번 피아노 pwm
 	uint32_t pwmF;
 	uint16_t scale[]={523,587,659,698,783,880,987,1046};//음계 
+	//4번 
+	uint16_t adcData[2];
 	
   /* USER CODE END 1 */
 
@@ -122,6 +129,7 @@ int main(void)
 	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);
+	HAL_ADC_Start_DMA(&hadc1,(uint32_t *)adcData,1);
 
   /* USER CODE END 2 */
 
@@ -168,6 +176,22 @@ int main(void)
 					HAL_Delay(800);
 			}			
 		
+		}
+		
+		{//4: STREET LAMP ADC(PA1),GPIO_LED (PC5)/ DMA 
+			//printf("ADC:%d\n\r",adcData[0]);
+			//HAL_Delay(1000);
+			while(adcData[0]<3000){ //dark so lamp on	
+				printf("ADC:%d\n\r",adcData[0]);				
+				HAL_GPIO_WritePin(GPIOC,GPIO_PIN_5,GPIO_PIN_SET);
+				HAL_Delay(1000);
+			}	
+			while(adcData[0] >3000){//light so lamp off
+				printf("ADC:%d\n\r",adcData[0]);		
+				HAL_GPIO_WritePin(GPIOC,GPIO_PIN_5,GPIO_PIN_RESET);
+				HAL_Delay(1000);
+
+			}		
 		}
 		
 		
