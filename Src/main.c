@@ -74,58 +74,10 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int fputc(int ch, FILE* stream){
-	HAL_UART_Transmit(&huart2,(uint8_t*)&ch,1,0xffff);
-	return ch;
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if(huart->Instance == USART2){
-		printf("Receive Success >> pData : %c",pData);
-		piano = pData - '1';// score 배열 접근 
-		
-		
-	}
-	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
-}
-
-float SHT20(int select){//NO HOLD MASTER MODE 
-	uint8_t I2CData[3];
-	uint16_t SLAVER_ADDR = SHT2x_ADDR;
-	float convData = 0.0;
-	if(select == TEMP){
-		I2CData[0] =SHT2x_NOHOLD_MASTER_T;
-		//printf("i am here\n\r");
-		//온도를 측정해라 명령을 송신한다
-		
-		if(HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff)==HAL_OK){
-				printf("Send Command SUCCESS!!\n\r");
-				
-		}else {
-				printf("Send Command FAILED!!\n\r");
-		}
-		HAL_Delay(100);
-		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
-		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
-		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
-		convData = -46.85+(175.72/65536*(float)sensor);
-		
-	}else if(select == HUMI){
-		I2CData[0] =SHT2x_NOHOLD_MASTER_RH;
-		
-		HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff);
-		HAL_Delay(100);
-		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
-		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
-		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
-		convData = -6+(125.0/65536*(float)sensor);
-		//convData = -6+125*((float)sensor/65536);
-		
-	}
-
-	return convData;
-}
+int fputc(int ch, FILE* stream);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+float SHT20(int select);
+void ShowMenu();
 /* USER CODE END 0 */
 
 /**
@@ -305,6 +257,69 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void ShowMenu(){
+		printf("--------Mini Project-------------\n\r");		
+		printf("1.LED SHIFT\n\r");
+		printf("2.Mood Light\n\r");
+		printf("3.piano\n\r");
+		printf("4.streetLight\n\r");
+		printf("5.temp/humid\n\r");
+		printf("0.program exit\n\r");
+		printf("please, select menu>>\n\r");
+}
+
+float SHT20(int select){//NO HOLD MASTER MODE 
+	uint8_t I2CData[3];
+	uint16_t SLAVER_ADDR = SHT2x_ADDR;
+	float convData = 0.0;
+	if(select == TEMP){
+		I2CData[0] =SHT2x_NOHOLD_MASTER_T;
+		//printf("i am here\n\r");
+		//온도를 측정해라 명령을 송신한다
+		
+		if(HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff)==HAL_OK){
+				printf("Send Command SUCCESS!!\n\r");
+				
+		}else {
+				printf("Send Command FAILED!!\n\r");
+		}
+		HAL_Delay(100);
+		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
+		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
+		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
+		convData = -46.85+(175.72/65536*(float)sensor);
+		
+	}else if(select == HUMI){
+		I2CData[0] =SHT2x_NOHOLD_MASTER_RH;
+		
+		HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff);
+		HAL_Delay(100);
+		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
+		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
+		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
+		convData = -6+(125.0/65536*(float)sensor);
+		//convData = -6+125*((float)sensor/65536);
+		
+	}
+
+	return convData;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart->Instance == USART2){
+		printf("Receive Success >> pData : %c",pData);
+		piano = pData - '1';// score 배열 접근 
+		
+		
+	}
+	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
+}
+
+int fputc(int ch, FILE* stream){
+	HAL_UART_Transmit(&huart2,(uint8_t*)&ch,1,0xffff);
+	return ch;
+}
 
 /* USER CODE END 4 */
 
