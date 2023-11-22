@@ -63,7 +63,7 @@ FILE __stdout;
 uint8_t pData;
 int piano = EOF;
 int menu = EOF;
-uint8_t direction = NULL;
+uint8_t direction = 'r';
 //1번 shift led 
 uint16_t curPin = GPIO_PIN_0;
 uint16_t nextPin = GPIO_PIN_1;
@@ -191,13 +191,13 @@ int main(void)
 			TIM3->CCR1 = CCRVal ;
 			CCRVal++;
 			printf("ccrVal: %d\n\r",CCRVal);
-			HAL_Delay(500);
+			HAL_Delay(100);
 		
-			if(CCRVal == 20){
+			if(CCRVal == 30){
 				while(CCRVal){
 						CCRVal--;
 						TIM3->CCR1 = CCRVal;
-						HAL_Delay(500);
+						HAL_Delay(100);
 				}
 			}			
 		}
@@ -333,7 +333,7 @@ float SHT20(int select){//NO HOLD MASTER MODE
 		//온도를 측정해라 명령을 송신한다
 		
 		if(HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff)==HAL_OK){
-				printf("Send Command SUCCESS!!\n\r");
+				//printf("Send Command SUCCESS!!\n\r");
 				
 		}else {
 				printf("Send Command FAILED!!\n\r");
@@ -384,13 +384,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		}else if(pData == 'l' || pData =='r'){//shift 명령어 
 			//printf("correct direction\n\r");
 			direction =pData;
-			if(pData =='l'){
-				curPin = GPIO_PIN_4;
-				nextPin =GPIO_PIN_5;
-			}else if(pData =='r'){
-				curPin = GPIO_PIN_0;
-				nextPin =GPIO_PIN_1;			
-			}
+//			if(pData =='l'){
+//				curPin = GPIO_PIN_4;
+//				nextPin =GPIO_PIN_5;
+//			}else if(pData =='r'){
+//				curPin = GPIO_PIN_0;
+//				nextPin =GPIO_PIN_1;			
+//			}
 			
 		}
 
