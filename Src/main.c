@@ -50,6 +50,7 @@
 /* USER CODE BEGIN PV */
 FILE __stdout;
 uint8_t pData;
+int piano = EOF;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,6 +70,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance == USART2){
 		printf("Receive Success >> pData : %c",pData);
+		piano = pData - '1';// score 배열 접근 
+		
+		
 	}
 	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
 }
@@ -85,6 +89,8 @@ int main(void)
 	uint16_t curPin = GPIO_PIN_0;
 	uint16_t nextPin = GPIO_PIN_1;
 	uint16_t CCRVal = 0;
+	uint32_t pwmF;
+	uint16_t scale[]={523,587,659,698,783,880,987,1046};//음계 
 	
   /* USER CODE END 1 */
 
@@ -115,6 +121,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);
 
   /* USER CODE END 2 */
 
@@ -149,6 +156,18 @@ int main(void)
 						//HAL_Delay(500);
 				}
 			}			
+		}
+		
+		{//3: PIANO (PB7     ------> TIM4_CH2)
+			TIM4->EGR = TIM4->EGR | 0x01;
+					
+			if(piano >= 0 && piano<8){		
+					pwmF = 10000000/ scale[piano];
+					TIM4->ARR = pwmF -1;
+					TIM4->CCR2 = pwmF /2;	
+					HAL_Delay(800);
+			}			
+		
 		}
 		
 		
