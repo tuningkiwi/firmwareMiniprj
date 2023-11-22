@@ -84,6 +84,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	uint16_t curPin = GPIO_PIN_0;
 	uint16_t nextPin = GPIO_PIN_1;
+	uint16_t CCRVal = 0;
 	
   /* USER CODE END 1 */
 
@@ -113,6 +114,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
+	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 
   /* USER CODE END 2 */
 
@@ -134,7 +136,20 @@ int main(void)
 				}		
 		}
 		
+		{//2: MOOD LIGHT
+			TIM3->CCR1 = CCRVal ;
+			CCRVal++;
+			printf("ccrVal: %d\n\r",CCRVal);
+			//HAL_Delay(500);
 		
+			if(CCRVal == 20){
+				while(CCRVal){
+						CCRVal--;
+						TIM3->CCR1 = CCRVal;
+						//HAL_Delay(500);
+				}
+			}			
+		}
 		
 		
     /* USER CODE END WHILE */
