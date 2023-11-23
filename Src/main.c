@@ -151,7 +151,7 @@ int main(void)
 				printf("please choose direct : 'r'ight or 'l'eft >>");
 	
 				while( direction == 'r'){//right
-					if(menu != 1) {break;}
+					if(menu != 1) {break;} //'q'또는 다른 메뉴 입력이 들어올때,
 					HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_SET);
 					HAL_Delay(1000);
 					HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_RESET);				
@@ -162,10 +162,7 @@ int main(void)
 						HAL_GPIO_WritePin(GPIOC,GPIO_PIN_4,GPIO_PIN_RESET);
 						curPin = GPIO_PIN_0;
 						nextPin =GPIO_PIN_1;
-					}
-					if(menu == 'q'){
-						break;
-					}					
+					}			
 				}
 				while(direction == 'l'){//left 
 					if(menu != 1 ){break;}
@@ -181,10 +178,7 @@ int main(void)
 						HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_RESET);	
 						curPin = GPIO_PIN_4;
 						nextPin =GPIO_PIN_5;
-					}
-					if(menu == 'q'){
-						break;
-					}							
+					}						
 				}
 
 		}
