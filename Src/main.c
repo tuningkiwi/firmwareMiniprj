@@ -149,10 +149,7 @@ int main(void)
 		while(menu == 1){//1: LED SHIFT
 				printf("LED SHIFT START\n\r");
 				printf("please choose direct : 'r'ight or 'l'eft >>");
-				while(direction ==NULL){
-					//printf("iam here1-NULL\n\r");
-					HAL_Delay(1000);
-				}		
+	
 				while( direction == 'r'){//right
 					if(menu != 1) {break;}
 					HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_SET);
@@ -165,7 +162,10 @@ int main(void)
 						HAL_GPIO_WritePin(GPIOC,GPIO_PIN_4,GPIO_PIN_RESET);
 						curPin = GPIO_PIN_0;
 						nextPin =GPIO_PIN_1;
-					}		
+					}
+					if(menu == 'q'){
+						break;
+					}					
 				}
 				while(direction == 'l'){//left 
 					if(menu != 1 ){break;}
@@ -181,17 +181,21 @@ int main(void)
 						HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_RESET);	
 						curPin = GPIO_PIN_4;
 						nextPin =GPIO_PIN_5;
-					}					
+					}
+					if(menu == 'q'){
+						break;
+					}							
 				}
 
 		}
 		
-		while(menu == 2){//2: MOOD LIGHT
+		while(menu == 2){//2: MOOD LIGHT PC6
 			printf("MOOD LIGHT START\n\r");
 			TIM3->CCR1 = CCRVal ;
 			CCRVal++;
 			printf("ccrVal: %d\n\r",CCRVal);
 			HAL_Delay(100);
+			
 		
 			if(CCRVal == 30){
 				while(CCRVal){
@@ -199,11 +203,15 @@ int main(void)
 						TIM3->CCR1 = CCRVal;
 						HAL_Delay(100);
 				}
-			}			
+			}
+			if(menu == 'q'){
+					HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);	
+					break;
+			}						
 		}
 		
 		while(menu == 3){//3: PIANO (PB7     ------> TIM4_CH2)
-			//TIM4->EGR = TIM4->EGR | 0x01;
+			
 			printf("PIANO START\n\r");
 			printf("Please enter a scale>>");
 			
@@ -211,12 +219,12 @@ int main(void)
 				HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);	
 				//printf("iam here3-EOF\n\r");
 				HAL_Delay(1000);
-				if(menu==0|| menu ==1 || menu ==2|| menu==4|| menu==5){
+				if(menu=='q'||menu==0|| menu ==1 || menu ==2|| menu==4|| menu==5){
 					break;
 				}
 			}	
 			if(piano >= 0 && piano<8){	
-					HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);				
+					HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);									
 					pwmF = 10000000/ scale[piano];
 					TIM4->ARR = pwmF -1;
 					TIM4->CCR2 = pwmF /2;	
@@ -224,6 +232,10 @@ int main(void)
 					
 			}			
 			piano = EOF;
+			if(menu =='q'){
+				HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);	
+				break;
+			}
 		}
 		
 		while(menu == 4){//4: STREET LAMP ADC(PA1),GPIO_LED (PC5)/ DMA 
@@ -241,7 +253,10 @@ int main(void)
 				HAL_GPIO_WritePin(GPIOC,GPIO_PIN_5,GPIO_PIN_RESET);
 				HAL_Delay(1000);
 
-			}		
+			}
+			if(menu =='q'){
+				break;
+			}			
 		}
 		
 		while(menu == 5){//5: TEMP/HUMID  PB6(I2C1_SCL)PB9(I2C1_SDA)   
@@ -250,11 +265,16 @@ int main(void)
 			humidity = SHT20(HUMI);
 			HAL_Delay(500);
 			printf("TEMP: %.2lf HUMI: %.2lf \r\n",temperature, humidity);
-		
+			if(menu =='q'){
+				break;
+			}			
 		}
 		
 		while(menu == 0){
+			HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);	
+			HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);
 			printf("program exit\n\r");
+			
 			return 0;
 		}
 		
@@ -367,6 +387,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		//piano = pData - '1';// score 배열 접근 
 		if(pData >= '0' && pData <='5'){//메뉴선택
 			menu = pData- '0';
+			if (menu == 2){
+				HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);	
+			}
 			
 			//printf("menu : %d\n\r", menu);
 		}else if(pData >='a' && pData <='g'){//피아노 음계 
@@ -379,19 +402,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				case 'g': piano =4;break;
 				case 'a': piano =5;break;
 				case 'b': piano =6;break;//시				
-			}
-			
+			}		
 		}else if(pData == 'l' || pData =='r'){//shift 명령어 
 			//printf("correct direction\n\r");
-			direction =pData;
-//			if(pData =='l'){
-//				curPin = GPIO_PIN_4;
-//				nextPin =GPIO_PIN_5;
-//			}else if(pData =='r'){
-//				curPin = GPIO_PIN_0;
-//				nextPin =GPIO_PIN_1;			
-//			}
-			
+			direction =pData;		
+		}else if(pData == 'q'){
+			menu = 'q';
+			HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);	
+			HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);	
 		}
 
 		ShowMenu();
