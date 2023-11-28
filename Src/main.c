@@ -49,6 +49,14 @@
 #define SHT2x_WRITE_USER_REG		0xE6
 #define SHT2x_READ_USER_REG			0xE7
 #define SHT2x_SOFT_RESET		0xFE
+
+/*********HC-SR04command set**************/
+#define STK_CTRL  *(volatile unsigned int*)0xE000E010
+#define STK_LOAD  *(volatile unsigned int*)0xE000E014
+#define STK_VAL   *(volatile unsigned int*)0xE000E018
+#define STK_CALIB *(volatile unsigned int*)0xE000E01C
+	
+#define ENABLE 0 
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,10 +72,10 @@ uint8_t pData;
 int piano = EOF;
 int menu = EOF;
 uint8_t direction = 'r';
-//1번 shift led 
+//1�? shift led 
 uint16_t curPin = GPIO_PIN_0;
 uint16_t nextPin = GPIO_PIN_1;
-
+uint32_t echoTime = 0;
 //uint16_t adcData[2];
 /* USER CODE END PV */
 
@@ -83,6 +91,10 @@ int fputc(int ch, FILE* stream);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 float SHT20(int select);
 void ShowMenu();
+
+void usDelay(uint16_t us);
+void SysTic_Init();
+void HAL_Delay_Porting();
 /* USER CODE END 0 */
 
 /**
@@ -93,14 +105,14 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	//2번 mood light
+	//2�? mood light
 	uint16_t CCRVal = 0;
-	//3번 피아노 pwm
+	//3�? ?��?��?�� pwm
 	uint32_t pwmF;
-	uint16_t scale[]={523,587,659,698,783,880,987,1046};//음계 
-	//4번 STREET LAMP 
+	uint16_t scale[]={523,587,659,698,783,880,987,1046};//?���? 
+	//4�? STREET LAMP 
 	uint16_t adcData[2];
-	//5번 Temp/Humid 
+	//5�? Temp/Humid 
 	float temperature, humidity;
 	
   /* USER CODE END 1 */
@@ -129,10 +141,9 @@ int main(void)
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 	HAL_UART_Receive_IT(&huart2,&pData,sizeof(pData));
-	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
-	HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);
 	HAL_ADC_Start_DMA(&hadc1,(uint32_t *)adcData,1);
 
 	ShowMenu();
@@ -145,13 +156,13 @@ int main(void)
 		//printf("iam here0\n\r");
 		//printf("menu:%d\n\r",menu);
 		HAL_Delay(1000);
-		TIM4->EGR = TIM4->EGR | 0x01;
+
 		while(menu == 1){//1: LED SHIFT
 				printf("LED SHIFT START\n\r");
 				printf("please choose direct : 'r'ight or 'l'eft >>");
 	
 				while( direction == 'r'){//right
-					if(menu != 1) {break;} //'q'또는 다른 메뉴 입력이 들어올때,
+					if(menu != 1) {break;} //'q'?��?�� ?���? 메뉴 ?��?��?�� ?��?��?��?��,
 					HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_SET);
 					HAL_Delay(1000);
 					HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_RESET);				
@@ -183,7 +194,7 @@ int main(void)
 
 		}
 		
-		while(menu == 2){//2: MOOD LIGHT PC6
+		while(menu == 2){//2: MOOD LIGHT PC6 tim3ch1
 			printf("MOOD LIGHT START\n\r");
 			TIM3->CCR1 = CCRVal ;
 			CCRVal++;
@@ -191,7 +202,7 @@ int main(void)
 			HAL_Delay(100);
 			
 		
-			if(CCRVal == 30){
+			if(CCRVal == 20){
 				while(CCRVal){
 						CCRVal--;
 						TIM3->CCR1 = CCRVal;
@@ -218,6 +229,7 @@ int main(void)
 				}
 			}	
 			if(piano >= 0 && piano<8){	
+					TIM4->EGR = TIM4->EGR | 0x01;
 					HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);									
 					pwmF = 10000000/ scale[piano];
 					TIM4->ARR = pwmF -1;
@@ -264,9 +276,49 @@ int main(void)
 			}			
 		}
 		
+		while(menu ==6)//hc-sr04
+	 {
+
+			printf("\nHC-SR04 START---------\n");
+			SysTic_Init();	
+			HAL_GPIO_WritePin(Trig_GPIO_Port,Trig_Pin,1);
+			usDelay(15);//15us delay
+			HAL_GPIO_WritePin(Trig_GPIO_Port,Trig_Pin,0);
+			while(HAL_GPIO_ReadPin(Echo_GPIO_Port, Echo_Pin) == 0){						
+				if(menu !=6) break;
+			}
+			
+			//SysTick timer start
+			STK_CTRL |= (1<<ENABLE);//ENABLE 비트on 
+			printf("%d",HAL_GetTick());
+			while(HAL_GPIO_ReadPin(Echo_GPIO_Port,Echo_Pin) == 1){
+				if(menu !=6) break;
+			}
+			echoTime = HAL_GetTick();//카운트
+			STK_CTRL &= ~(1<<ENABLE);//비트마스킹으로 반전. 
+			//340m/s -> 340x100 cm/1000000us  -> 0.34cm/us
+			double distance = echoTime/2*0.034;
+			printf("Distance = %.1lf cm\n\r", distance);
+			HAL_Delay_Porting();
+			HAL_Delay(200);
+			
+			if(distance < 5.0){
+						HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);									
+						pwmF = 10000000/ 523;
+						TIM4->ARR = pwmF -1;
+						TIM4->CCR2 = pwmF /2;	
+						HAL_Delay(500);
+
+			}else {
+					HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);
+			}
+	}
+		
 		while(menu == 0){
 			HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);	
 			HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);
+			HAL_TIM_PWM_Stop(&htim2,TIM_CHANNEL_3);
+			
 			printf("program exit\n\r");
 			
 			return 0;
@@ -343,9 +395,7 @@ float SHT20(int select){//NO HOLD MASTER MODE
 	float convData = 0.0;
 	if(select == TEMP){
 		I2CData[0] =SHT2x_NOHOLD_MASTER_T;
-		//printf("i am here\n\r");
-		//온도를 측정해라 명령을 송신한다
-		
+	
 		if(HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff)==HAL_OK){
 				//printf("Send Command SUCCESS!!\n\r");
 				
@@ -354,7 +404,7 @@ float SHT20(int select){//NO HOLD MASTER MODE
 		}
 		HAL_Delay(100);
 		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
-		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
+		//수신받은 데이터를 I2CData에 2byte를 저장
 		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
 		convData = -46.85+(175.72/65536*(float)sensor);
 		
@@ -364,7 +414,7 @@ float SHT20(int select){//NO HOLD MASTER MODE
 		HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff);
 		HAL_Delay(100);
 		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
-		//I2CData[0],I2CData[1] 두개를 묶어서 한 데이터로 처리 
+		//수신받은 데이터를 I2CData에 2byte를 저장
 		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
 		convData = -6+(125.0/65536*(float)sensor);
 		//convData = -6+125*((float)sensor/65536);
@@ -374,36 +424,57 @@ float SHT20(int select){//NO HOLD MASTER MODE
 	return convData;
 }
 
+
+void usDelay(uint16_t us){
+	__HAL_TIM_SET_COUNTER(&htim2,0);//time2 ch3
+	while(__HAL_TIM_GET_COUNTER(&htim2) < us);
+}
+
+void SysTic_Init(){
+	STK_LOAD =100-1; //count max
+	STK_VAL = 0;
+	STK_CTRL = 6;// clksource, tickint  on
+	uwTick = 0;
+}
+
+void HAL_Delay_Porting(){
+	STK_LOAD = 100000-1;
+	STK_CTRL |= 7;
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance == USART2){
-		//printf("Receive Success >> pData : %c\n\r",pData);
-		//piano = pData - '1';// score 배열 접근 
-		if(pData >= '0' && pData <='5'){//메뉴선택
+		if(pData >= '0' && pData <='6'){//메뉴
 			menu = pData- '0';
+			HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);	
+			HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);
+			HAL_TIM_PWM_Stop(&htim2,TIM_CHANNEL_3);				
 			if (menu == 2){
-				HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);	
+				HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);			
+			}else if (menu == 6){
+				HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_3);			
 			}
-			
-			//printf("menu : %d\n\r", menu);
-		}else if(pData >='a' && pData <='g'){//피아노 음계 
+
+		}else if(pData >='a' && pData <='g'){//piano 
 			//printf("correct piano\n\r");
 			switch(pData){
 				case 'c': piano =0;break;//도
-				case 'd': piano =1;break;
+				case 'd': piano =1;break;//레
 				case 'e': piano =2;break;
 				case 'f': piano =3;break;
 				case 'g': piano =4;break;
 				case 'a': piano =5;break;
-				case 'b': piano =6;break;//시				
+				case 'b': piano =6;break;//시			
 			}		
-		}else if(pData == 'l' || pData =='r'){//shift 명령어 
+		}else if(pData == 'l' || pData =='r'){//shift 명령
 			//printf("correct direction\n\r");
 			direction =pData;		
 		}else if(pData == 'q'){
 			menu = 'q';
 			HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);	
 			HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);	
+			HAL_TIM_PWM_Stop(&htim2,TIM_CHANNEL_3);	
 		}
 
 		ShowMenu();
