@@ -72,7 +72,7 @@ uint8_t pData;
 int piano = EOF;
 int menu = EOF;
 uint8_t direction = 'r';
-//1Î≤? shift led 
+//1Î≤à shift led 
 uint16_t curPin = GPIO_PIN_0;
 uint16_t nextPin = GPIO_PIN_1;
 uint32_t echoTime = 0;
@@ -105,14 +105,14 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	//2Î≤? mood light
+	//2) mood light
 	uint16_t CCRVal = 0;
-	//3Î≤? ?îº?ïÑ?Ö∏ pwm
+	//3) ÌîºÏïÑÎÖ∏ pwm
 	uint32_t pwmF;
-	uint16_t scale[]={523,587,659,698,783,880,987,1046};//?ùåÍ≥? 
-	//4Î≤? STREET LAMP 
+	uint16_t scale[]={523,587,659,698,783,880,987,1046};//PIANO
+	//4) STREET LAMP
 	uint16_t adcData[2];
-	//5Î≤? Temp/Humid 
+	//5) Temp/Humid
 	float temperature, humidity;
 	
   /* USER CODE END 1 */
@@ -162,7 +162,7 @@ int main(void)
 				printf("please choose direct : 'r'ight or 'l'eft >>");
 	
 				while( direction == 'r'){//right
-					if(menu != 1) {break;} //'q'?òê?äî ?ã§Î•? Î©îÎâ¥ ?ûÖ?†•?ù¥ ?ì§?ñ¥?ò¨?ïå,
+					if(menu != 1) {break;} 
 					HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_SET);
 					HAL_Delay(1000);
 					HAL_GPIO_WritePin(GPIOC,curPin,GPIO_PIN_RESET);				
@@ -215,14 +215,13 @@ int main(void)
 			}						
 		}
 		
-		while(menu == 3){//3: PIANO (PB7     ------> TIM4_CH2)
+		while(menu == 3){//3: PIANO (PB7------> TIM4_CH2)
 			
 			printf("PIANO START\n\r");
 			printf("Please enter a scale>>");
 			
 			while(piano == EOF){
 				HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);	
-				//printf("iam here3-EOF\n\r");
 				HAL_Delay(1000);
 				if(menu=='q'||menu==0|| menu ==1 || menu ==2|| menu==4|| menu==5){
 					break;
@@ -289,13 +288,13 @@ int main(void)
 			}
 			
 			//SysTick timer start
-			STK_CTRL |= (1<<ENABLE);//ENABLE ÎπÑÌä∏on 
+			STK_CTRL |= (1<<ENABLE);//ENABLE BIT on 
 			printf("%d",HAL_GetTick());
 			while(HAL_GPIO_ReadPin(Echo_GPIO_Port,Echo_Pin) == 1){
 				if(menu !=6) break;
 			}
-			echoTime = HAL_GetTick();//Ïπ¥Ïö¥Ìä∏
-			STK_CTRL &= ~(1<<ENABLE);//ÎπÑÌä∏ÎßàÏä§ÌÇπÏúºÎ°ú Î∞òÏ†Ñ. 
+			echoTime = HAL_GetTick();//TICK CNT 
+			STK_CTRL &= ~(1<<ENABLE);//BIT MASKING  
 			//340m/s -> 340x100 cm/1000000us  -> 0.34cm/us
 			double distance = echoTime/2*0.034;
 			printf("Distance = %.1lf cm\n\r", distance);
@@ -404,7 +403,7 @@ float SHT20(int select){//NO HOLD MASTER MODE
 		}
 		HAL_Delay(100);
 		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
-		//ÏàòÏã†Î∞õÏùÄ Îç∞Ïù¥ÌÑ∞Î•º I2CDataÏóê 2byteÎ•º Ï†ÄÏû•
+		//SAVE 2BYTE DATA TO BE SENT 
 		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
 		convData = -46.85+(175.72/65536*(float)sensor);
 		
@@ -414,7 +413,7 @@ float SHT20(int select){//NO HOLD MASTER MODE
 		HAL_I2C_Master_Transmit(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,1,0xffff);
 		HAL_Delay(100);
 		HAL_I2C_Master_Receive(&hi2c1,(uint16_t)SLAVER_ADDR,(uint8_t*)I2CData,2,0xffff);
-		//ÏàòÏã†Î∞õÏùÄ Îç∞Ïù¥ÌÑ∞Î•º I2CDataÏóê 2byteÎ•º Ï†ÄÏû•
+		//SAVE 2BYTE DATA TO BE SENT 
 		uint16_t sensor = I2CData[0] << 8 | I2CData[1];
 		convData = -6+(125.0/65536*(float)sensor);
 		//convData = -6+125*((float)sensor/65536);
@@ -445,7 +444,7 @@ void HAL_Delay_Porting(){
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance == USART2){
-		if(pData >= '0' && pData <='6'){//Î©îÎâ¥
+		if(pData >= '0' && pData <='6'){//MENU
 			menu = pData- '0';
 			HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);	
 			HAL_TIM_PWM_Stop(&htim4,TIM_CHANNEL_2);
@@ -459,15 +458,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		}else if(pData >='a' && pData <='g'){//piano 
 			//printf("correct piano\n\r");
 			switch(pData){
-				case 'c': piano =0;break;//ÎèÑ
-				case 'd': piano =1;break;//Î†à
+				case 'c': piano =0;break;//DO
+				case 'd': piano =1;break;//RE
 				case 'e': piano =2;break;
 				case 'f': piano =3;break;
 				case 'g': piano =4;break;
 				case 'a': piano =5;break;
-				case 'b': piano =6;break;//Ïãú			
+				case 'b': piano =6;break;//SI		
 			}		
-		}else if(pData == 'l' || pData =='r'){//shift Î™ÖÎ†π
+		}else if(pData == 'l' || pData =='r'){//shift Command 
 			//printf("correct direction\n\r");
 			direction =pData;		
 		}else if(pData == 'q'){
